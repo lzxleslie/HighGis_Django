@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="">
+  <meta name="author" content="">
+
+  <title>高性能GIS动态制图</title>
+
+  <!-- Bootstrap core CSS -->
+  <link href="../static/cssjs/css/bootstrap.css" rel="stylesheet">
+
+  <!-- Custom styles for this template -->
+  <link href="../static/cssjs/css/dashboard.css" rel="stylesheet">
+  <link href="../static/cssjs/css/ol.css" rel="stylesheet">
+
+  <!-- js文件 -->
+  <script type="text/javascript" src="../static/cssjs/libs/jquery.min.js"></script>
+  <script type="text/javascript" src="../static/cssjs/libs/bootstrap.min.js"></script>
+  <script type="text/javascript" src="../static/cssjs/libs/ol.js"></script>
+  <script type="text/javascript" src="../static/cssjs/js/base.js"></script>
+
+
+</head>
+
+<body>
+
+  <div class="col-md-1" style="position: fixed; bottom: 0px; z-index: 9999">
+    <div class="btn-group dropup">
+      <button type="button" id = "baseMap" class="btn btn-default dropdown-toggle" data-toggle="dropdown">
+        OSM <span class="caret"></span>
+      </button>
+      <ul class="dropdown-menu" role="menu">
+        <li><a href="#" id="dark1"> DARK1</a></li>
+        <li><a href="#" id="dark2"> DARK2</a></li>
+        <li><a href="#" id="supermarket"> Super Market</a></li>
+        <li><a href="#" id="HeatMap"> Heat Map</a></li>
+        <li><a href="#" id="GeoClass"> Geography Class</a></li>
+        <li><a href="#" id="cabs-crimes-trees"> Cabs Crimes Trees</a></li>
+        <li class="divider"></li>
+        <li><a href="#" id="osm"> OSM </a></li>
+      </ul>
+    </div>
+  </div>
+
+  <nav class="navbar navbar-inverse navbar-fixed-top">
+    <div class="container-fluid">
+      <div class="navbar-header">
+        <a class="navbar-brand" href="/main/">高性能GIS动态制图</a>
+      </div>
+      <div id="navbar" class="navbar-collapse collapse">
+        <ul class="nav  nav-pills navbar-right list-inline">
+          {% if request.user.is_authenticated %}
+          <li><a href="/logout/"><b>{{ request.user.username }} , 注销</b></a></li>
+          {% else %}
+          <li><a data-toggle="modal" data-target="#login">Login</a></li>
+          {% endif %}
+          <li><a href="#">Settings</a></li>
+          <li><a href="#">Edit</a></li>
+          <li><a href="#">Help</a></li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container-fluid">
+    <div class="row">
+      <div class="col-md-1">
+        <ul class="nav nav-sidebar">
+          <li><a href="#">Add Layer</a></li>
+          {% if request.user.is_authenticated %}
+          <li><a data-toggle="modal" data-target="#importModal">Import</a></li>
+          {% else %}
+          <li><a data-toggle="modal" data-target="#remind2login">Import</a></li>
+          {% endif %}
+          <li><a href="#">Export</a></li>
+          {% if request.user.is_authenticated %}
+          <li><a data-toggle="modal" data-target="#importStyle">Style</a></li>
+          {% else %}
+          <li><a data-toggle="modal" data-target="#remind2login">Style</a></li>
+          {% endif %}
+          <li><a href="#">Legend</a></li>
+          <li><a id="apply">Apply</a></li>
+        </ul>
+      </div>
+      <div class="col-md-11">
+
+        <ul id="mapTab" class="nav nav-tabs">
+          <li class="active"><a href="#map" data-toggle="tab">Map View</a></li>
+          <li><a href="#table" data-toggle="tab">Table View</a></li>
+        </ul>
+
+        <div id="myTabContent" class="tab-content">
+          <div class="tab-pane fade in active" id="map"></div>
+          <div class="tab-pane fade" id="table">
+            {% if table%}
+            <table class="table table-hover">
+              <tbody>
+                {% for body in table %}
+                <tr>
+                  {% for row in body %}
+                  <td>{{ row }}</td>
+                  {% endfor %}
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+            {% else %}
+            <h1>No Table</h1> {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal  Import Data-->
+      <div class="modal fade" id="importModal" tabindex="-1" role="dialog" aria-labelledby="Import Data">
+        <div class="modal-dialog" role="document">
+          <div class="modal-content">
+            <div class="modal-header">
+              <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+              <h4 class="modal-title" id="importModal">Import Data</h4>
+            </div>
+            <div class="modal-body">
+
+              <form role="form" method="POST" enctype="multipart/form-data">
+                <div class="form-group">
+                  <label for="userfile">上传数据</label>
+                  <input type="file" id="userfile" accept="applicaion/msexcel" name="userfile">
+                </div>
+                <button id="sum" type="submit" class="btn btn-primary" action="">提交</button>
+              </form>
+
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-primary" data-dismiss="modal">Close</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal Import Style -->
+      <div class="modal fade" id="importStyle" tabindex="-1" role="dialog" aria-labelledby="Import CartoCSS">
+        <div class="modal-dialog" role="document">
+          <div class="modal-content">
+            <div class="modal-header">
+              <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+              </button>
+              <h4 class="modal-title" id="importStyle">Editing Style</h4>
+            </div>
+            <div class="modal-body">
+              <form role="form" method="POST" enctype="multipart/form-data">
+                <div class="form-group">
+                  <label for="usersql"> 查询语句 </label>
+                  <input type="text" id="usersql" name="usersql" class="form-control" placeholder="SQL ......"></input>
+                </div>
+                <div class="form-group">
+                  <label for="userstyle"> 编辑样式</label>
+                  <textarea id="userstyle" name="userstyle" class="form-control" rows="15" placeholder="CartoCSS ......" value="fengtao"></textarea>
+                </div>
+                <button id="subStyle" type="submit" class="btn btn-primary">提交</button>
+              </form>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-primary" data-dismiss="modal"> Close </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal Login -->
+      <div class="modal fade" id="login" tabindex="-1" role="dialog" aria-labelledby="Login">
+        <div class="modal-dialog" role="document">
+          <div class="modal-content">
+            <div class="modal-header">
+              <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+              </button>
+              <h4 class="modal-title"><b>Welcome </b></h4>
+            </div>
+            <div class="modal-body">
+              <div class="container-fluid">
+                <div class="row">
+                  <div class="col-md-7">
+                    <form role="form" method="POST" action="{% url 'login' %}">
+                      <div class="form-group">
+                        <input type="text" class="form-control" id="loginname" name="username" placeholder="请输入用户姓名">
+                        <br>
+                        <input type="password" class="form-control" id="loginpassword" name="password" placeholder="请输入用户密码">
+                      </div>
+                      <div class="form-group">
+                        <label>
+                          <input type="checkbox" name="rememberme" />下次自动登录</label>
+                      </div>
+                      <div class="pull-right">
+                        <button id="btnLogin" type="submit" class="btn btn-primary">登录</button>
+                      </div>
+                    </form>
+                  </div>
+                  <div class="col-md-5">
+                    <h4><b> 没有账户？</b></h4>
+                    <p>此处的文字是为了提醒你及时注册。。。如果没有注册的话，抓紧注册吧。。。</p>
+                    <div class="pull-right">
+                      <a href="/register">
+                        <input type="button" value=" 注册 " class="btn btn-warning">
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- remind to login -->
+      <div class="modal fade" id="remind2login" tabindex="-1" role="dialog">
+        <div class="modal-dialog" role="document">
+          <div class="modal-content">
+            <div class="modal-header">
+              <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+              </button>
+              <h1 class="modal-title text-center text-danger">WARNING</h1>
+            </div>
+            <div class="modal-body">
+              <h2 class="text-center text-warning"> IF you want to use this function , please Login first!</h2>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-primary" data-dismiss="modal"> Close </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script type="text/javascript">
+    init();
+
+    {% if request.user.is_authenticated %}
+      console.log("user is logined");
+    {% endif %}
+
+    //get the data from django templates
+    var layername = "{{ request.user.username }}";
+    console.log(layername);
+
+    var urlPath = 'http://localhost:8000/' + layername + '/{z}/{x}/{y}.png';
+
+    var osmLayer = new ol.layer.Tile({
+      source: new ol.source.XYZ({
+        url: urlPath
+      })
+    });
+
+    $("#apply").click(function() {
+      map.addLayer(osmLayer);
+      console.log(" import userlayer");
+    });
+
+
+    $("#dark1").click(function(){
+      $("#baseMap")[0].innerText = this.innerText;
+
+      map.removeLayer(baseLayer);
+      var baseMapUrl = 'http://localhost:8888/dark1/{z}/{x}/{y}.png';
+      baseLayer = new ol.layer.Tile({
+        source: new ol.source.XYZ({
+          url: baseMapUrl
+        })
+      });
+      map.addLayer(baseLayer);
+    });
+    $("#dark2").click(function(){
+      $("#baseMap")[0].innerText = this.innerText;
+
+      map.removeLayer(baseLayer);
+      var baseMapUrl = 'http://localhost:8888/dark2/{z}/{x}/{y}.png';
+      baseLayer = new ol.layer.Tile({
+        source: new ol.source.XYZ({
+          url: baseMapUrl
+        })
+      });
+      map.addLayer(baseLayer);
+    });
+
+    $("#supermarket").click(function(){
+      $("#baseMap")[0].innerText = this.innerText;
+
+      map.removeLayer(baseLayer);
+      var baseMapUrl = 'http://localhost:8888/supermarket/{z}/{x}/{y}.png';
+      baseLayer = new ol.layer.Tile({
+        source: new ol.source.XYZ({
+          url: baseMapUrl
+        })
+      });
+      map.addLayer(baseLayer);
+    });
+
+    $("#HeatMap").click(function(){
+      $("#baseMap")[0].innerText = this.innerText;
+
+      map.removeLayer(baseLayer);
+      var baseMapUrl = 'http://localhost:8888/heatmap-exam/{z}/{x}/{y}.png';
+      baseLayer = new ol.layer.Tile({
+        source: new ol.source.XYZ({
+          url: baseMapUrl
+        })
+      });
+      map.addLayer(baseLayer);
+    });
+
+    $("#GeoClass").click(function(){
+      $("#baseMap")[0].innerText = this.innerText;
+
+      map.removeLayer(baseLayer);
+      var baseMapUrl = 'http://localhost:8888/geography-class/{z}/{x}/{y}.png';
+      baseLayer = new ol.layer.Tile({
+        source: new ol.source.XYZ({
+          url: baseMapUrl
+        })
+      });
+      map.addLayer(baseLayer);
+    });
+
+    $("#cabs-crimes-trees").click(function(){
+        $("#baseMap")[0].innerText = this.innerText;
+
+        map.removeLayer(baseLayer);
+        var baseMapUrl = 'http://localhost:8888/cabs-crimes-trees/{z}/{x}/{y}.png';
+        baseLayer = new ol.layer.Tile({
+          source: new ol.source.XYZ({
+            url: baseMapUrl
+          })
+        });
+        map.addLayer(baseLayer);
+      });
+
+    $("#osm").click(function(){
+      $("#baseMap")[0].innerText = this.innerText;
+
+      map.removeLayer(baseLayer);
+      var baseMapUrl = 'http://localhost:8888/osm/{z}/{x}/{y}.png';
+      baseLayer = new ol.layer.Tile({
+        source: new ol.source.XYZ({
+          url: baseMapUrl
+        })
+      });
+      map.addLayer(baseLayer);
+    });
+
+
+  </script>
+
+</body>
+
+</html>
