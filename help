@@ -1,0 +1,4 @@
+uwsgi --http :8888 --workers 8 --eval 'import TileStache application = TileStache.WSGITileServer("/home/whu/src/TileStache/tilestache.cfg")'
+ uwsgi --http :8888 --workers 8 --eval 'import TileStache; application = TileStache.WSGITileServer("/home/whu/src/TileStache/tilestache.cfg")'
+cd /home/whu/projects/osmdjango
+python manage.py runserver
